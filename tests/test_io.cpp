@@ -809,11 +809,11 @@ TEST_CASE("ascii special float values", "[io]")
                                 "FIELDS x\n"
                                 "SIZE 4\n"
                                 "TYPE F\n"
-                                "WIDTH 3\n"
+                                "WIDTH 6\n"
                                 "HEIGHT 1\n"
-                                "POINTS 3\n"
+                                "POINTS 6\n"
                                 "DATA ascii\n"
-                                "nan\ninf\n-inf\n";
+                                "nan\ninf\n-inf\nNAN\nINF\n-INF\n";
     std::stringstream ss(payload);
     PcdSpec spec = pcdio::load_pcd(ss);
     const float* xs = spec.find_field("x")->get_data<float>();
@@ -822,6 +822,11 @@ TEST_CASE("ascii special float values", "[io]")
     REQUIRE(xs[1] > 0);
     REQUIRE(std::isinf(xs[2]));
     REQUIRE(xs[2] < 0);
+    REQUIRE(std::isnan(xs[3]));
+    REQUIRE(std::isinf(xs[4]));
+    REQUIRE(xs[4] > 0);
+    REQUIRE(std::isinf(xs[5]));
+    REQUIRE(xs[5] < 0);
 }
 
 TEST_CASE("get_data checks the field type", "[io]")

@@ -16,7 +16,6 @@
 #include "lzf.h"
 #include "pcd_utils.h"
 
-#include <charconv>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -31,20 +30,6 @@ namespace pcdio {
 
 namespace {
 
-// Format a floating-point value with full round-trip precision.  std::to_chars is
-// locale-independent (the PCD format always uses '.' as the decimal separator, regardless of
-// the process locale), and its shortest representation round-trips exactly.
-template <typename ValueType>
-std::string format_float(ValueType value)
-{
-    char buf[32]; // The shortest float/double form provably fits (<= 24 chars).
-    const auto result = std::to_chars(buf, buf + sizeof(buf), value);
-    if (result.ec != std::errc()) {
-        throw std::runtime_error("PCD float formatting failed.");
-    }
-    return std::string(buf, result.ptr);
-}
-
 // Format a single field element (at `p`) as an ASCII token.
 std::string ascii_token(const uint8_t* p, char type, int size)
 {
@@ -54,7 +39,7 @@ std::string ascii_token(const uint8_t* p, char type, int size)
         ValueType value;
         std::memcpy(&value, p, sizeof(ValueType));
         if constexpr (std::is_floating_point_v<ValueType>) {
-            token = format_float(value);
+            token = internal::format_float(value);
         } else if constexpr (std::is_signed_v<ValueType>) {
             token = std::to_string(static_cast<long long>(value));
         } else {
@@ -84,7 +69,7 @@ void save_pcd(std::ostream& out, const PcdSpec& spec)
     out << "\nWIDTH " << spec.width << "\n";
     out << "HEIGHT " << spec.height << "\n";
     out << "VIEWPOINT";
-    for (double v : spec.viewpoint) out << ' ' << format_float(v);
+    for (double v : spec.viewpoint) out << ' ' << internal::format_float(v);
     out << "\nPOINTS " << spec.points << "\n";
     out << "DATA " << spec.data << "\n";
 

@@ -168,11 +168,11 @@ PcdHeader parse_header(std::istream& in)
                 if (!(iss >> token)) {
                     invalid("PCD header VIEWPOINT entry must have 7 values.");
                 }
-                // Locale-independent like the payload parser: stream extraction would consult
-                // the global C++ locale and misparse '.' decimals under e.g. de_DE.
-                const char* begin = token.data();
-                const auto result = std::from_chars(begin, begin + token.size(), v);
-                if (result.ec != std::errc() || result.ptr != begin + token.size()) {
+                // Locale-independent: parse in the classic "C" locale so '.' decimals are read
+                // regardless of the process locale.
+                bool out_of_range = false;
+                if (!internal::parse_double(
+                        token.data(), token.data() + token.size(), v, out_of_range)) {
                     invalid("PCD header VIEWPOINT entry '" + token + "' could not be parsed.");
                 }
             }
@@ -278,11 +278,11 @@ void write_ascii_value(char* dst, char type, int size, const std::string& token)
         ValueType value{};
         if constexpr (std::is_floating_point_v<ValueType>) {
             double parsed = 0;
-            const auto result = std::from_chars(begin, end, parsed);
-            if (result.ec == std::errc::result_out_of_range) {
-                corrupt("PCD ascii value '" + token + "' is out of range for its field type.");
-            }
-            if (result.ec == std::errc::invalid_argument || result.ptr != end) {
+            bool out_of_range = false;
+            if (!internal::parse_double(begin, end, parsed, out_of_range)) {
+                if (out_of_range) {
+                    corrupt("PCD ascii value '" + token + "' is out of range for its field type.");
+                }
                 corrupt("PCD ascii value '" + token + "' could not be parsed.");
             }
             if (std::isfinite(parsed) &&
