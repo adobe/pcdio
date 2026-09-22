@@ -1,0 +1,67 @@
+name: build and test
+
+on: [pull_request]
+
+# Least privilege: build/test only reads the checkout.
+permissions:
+  contents: read
+
+# Run every step in bash everywhere: on Windows the default pwsh shell only gates a job on the
+# last command's exit code, so a failed `cmake --build` followed by a passing `ctest` would
+# report a false green.  bash fails the step on the first failing command.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-Ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: build and run
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DPCDIO_BUILD_TESTS=On -DPCDIO_BUILD_EXAMPLES=On
+        make -j
+        ctest --output-on-failure
+
+  build-MacOS:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: build and run
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DPCDIO_BUILD_TESTS=On -DPCDIO_BUILD_EXAMPLES=On
+        make -j
+        ctest --output-on-failure
+
+  build-Windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: build and run
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_GENERATOR_PLATFORM=x64 -DPCDIO_BUILD_TESTS=On -DPCDIO_BUILD_EXAMPLES=On
+        cmake --build . --config Release
+        ctest -C Release --output-on-failure
+
+  build-Python:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.10' # exercise the minimum supported interpreter
+
+    - name: build and run
+      run: |
+        pip install .[test]
+        python -m pytest tests/test_pcdio.py

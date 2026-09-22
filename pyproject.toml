@@ -1,0 +1,38 @@
+[build-system]
+requires = [
+    # nanobind itself is fetched by CMake (CPM); the nanobind-backend pip package is a
+    # runtime-only dependency of split-mode extensions, so it does not belong here.
+    "scikit-build-core==0.9.8",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pcdio"
+maintainers = [{name = "Qingnan Zhou", email = "qnzhou@gmail.com"}]
+description = "A tiny C++ library to read/write ASCII/binary/compressed PCD format files."
+readme = "README.md"
+# Floor is 3.10: nanobind-backend (a mandatory runtime dependency) and nanobind v3 split mode
+# both require Python >= 3.10.
+requires-python = ">=3.10"
+dynamic = ["version"]
+license = { file = "LICENSE" }
+
+dependencies = [
+    "nanobind-backend>=1.0",
+    "numpy>=1.25",
+]
+urls.repository = "https://github.com/Research-Adobe/pcdio"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.scikit-build]
+# Ship the `pcdio` Python package; CMake only installs the compiled pypcdio extension into it.
+wheel.packages = ["python/pcdio"]
+
+[tool.scikit-build.cmake.define]
+PCDIO_PYTHON = "ON"
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "python/pcdio/__init__.py"

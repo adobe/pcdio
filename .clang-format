@@ -1,0 +1,32 @@
+# clang-format configuration: the Google style with project-specific overrides.
+# Run `clang-format --dump-config` to see the fully resolved settings.
+BasedOnStyle: Google
+
+AccessModifierOffset: -4
+AlignAfterOpenBracket: DontAlign
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AlwaysBreakBeforeMultilineStrings: false
+BinPackArguments: false
+BinPackParameters: false
+BreakConstructorInitializers: BeforeComma
+ColumnLimit: 100
+CommentPragmas: '/*(.*)*/'
+DerivePointerAlignment: false
+IncludeBlocks: Preserve
+IndentCaseLabels: false
+IndentWidth: 4
+MaxEmptyLinesToKeep: 2
+PackConstructorInitializers: BinPack
+SpacesBeforeTrailingComments: 1
+SpacesInContainerLiterals: false
+Standard: Latest
+TabWidth: 4
+
+# Break before the brace on class/struct/function definitions; attach everywhere else.
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterFunction: true
+  AfterStruct: true
+  SplitEmptyFunction: false
