@@ -567,6 +567,40 @@ TEST_CASE("malformed binary_compressed data is rejected", "[io]")
     }
 }
 
+TEST_CASE("binary payload reads across chunk boundaries", "[io]")
+{
+    constexpr size_t kChunkSize = 64 * 1024;
+    constexpr size_t kPointCount = kChunkSize / sizeof(float) + 3;
+    std::string header = "VERSION 0.7\n"
+                         "FIELDS x\n"
+                         "SIZE 4\n"
+                         "TYPE F\n";
+    header += "WIDTH " + std::to_string(kPointCount) + "\n";
+    header += "HEIGHT 1\nPOINTS " + std::to_string(kPointCount) + "\n";
+    header += "DATA binary\n";
+    std::vector<float> values(kPointCount);
+    for (size_t i = 0; i < values.size(); ++i) values[i] = static_cast<float>(i);
+
+    std::string payload = header;
+    payload.append(reinterpret_cast<const char*>(values.data()), values.size() * sizeof(float));
+
+    SECTION("reads a payload larger than one chunk")
+    {
+        std::stringstream ss(payload);
+        const PcdSpec spec = pcdio::load_pcd(ss);
+        const PcdField* field = spec.find_field("x");
+        REQUIRE(field != nullptr);
+        REQUIRE(field->data.size() == values.size() * sizeof(float));
+        REQUIRE(std::memcmp(field->data.data(), values.data(), field->data.size()) == 0);
+    }
+    SECTION("rejects truncation after a full chunk and a partial read")
+    {
+        payload.resize(header.size() + kChunkSize + sizeof(float));
+        std::stringstream ss(payload);
+        REQUIRE_THROWS_AS(pcdio::load_pcd(ss), pcdio::CorruptData);
+    }
+}
+
 TEST_CASE("malformed input is rejected", "[io]")
 {
     SECTION("negative SIZE")

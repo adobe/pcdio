@@ -310,13 +310,18 @@ void write_ascii_value(char* dst, char type, int size, const std::string& token)
 // arrives, so a truncated (or tiny) file cannot force the full declared size to be allocated.
 std::string read_payload(std::istream& in, size_t num_bytes, const char* truncated_message)
 {
+    constexpr size_t kChunkSize = 64 * 1024;
     std::string content;
-    char chunk[64 * 1024];
     while (content.size() < num_bytes && in) {
-        const size_t remaining = num_bytes - content.size();
-        in.read(chunk, static_cast<std::streamsize>(std::min(remaining, sizeof(chunk))));
+        const size_t step = std::min(num_bytes - content.size(), kChunkSize);
+        const size_t cur = content.size();
+        content.resize(cur + step);
+        in.read(&content[cur], static_cast<std::streamsize>(step));
         const std::streamsize got = in.gcount();
-        if (got > 0) content.append(chunk, static_cast<size_t>(got));
+        if (got < static_cast<std::streamsize>(step)) {
+            content.resize(cur + static_cast<size_t>(std::max<std::streamsize>(got, 0)));
+            break;
+        }
     }
     if (content.size() != num_bytes) corrupt(truncated_message);
     return content;
