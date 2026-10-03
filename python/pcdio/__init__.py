@@ -11,5 +11,7 @@
 #
 """ A tiny C++ library to read/write ASCII/binary/compressed PCD format files.
 """
+from importlib.metadata import version as _version
+
 from .pypcdio import *
-__version__ = "0.1.0"
+__version__ = _version("pcdio")

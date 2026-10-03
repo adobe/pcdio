@@ -41,10 +41,13 @@ test = ["pytest"]
 [tool.scikit-build]
 # Ship the `pcdio` Python package; CMake only installs the compiled pypcdio extension into it.
 wheel.packages = ["python/pcdio"]
+# Keep the canonical version in source distributions, including untagged local builds.
+sdist.include = ["VERSION"]
 
 [tool.scikit-build.cmake.define]
 PCDIO_PYTHON = "ON"
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
-input = "python/pcdio/__init__.py"
+input = "VERSION"
+regex = '^(?P<value>[0-9]+\.[0-9]+\.[0-9]+)$'

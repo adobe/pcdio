@@ -22,8 +22,10 @@
 message(STATUS "CMake version: ${CMAKE_VERSION}")
 cmake_minimum_required(VERSION 3.14)
 
-# Version tracks python/pcdio/__init__.py.
-project(PcdIO VERSION 0.1.0)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PCDIO_VERSION LIMIT_COUNT 1)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+project(PcdIO VERSION "${PCDIO_VERSION}")
 
 option(PCDIO_BUILD_TESTS "Build unit tests" OFF)
 option(PCDIO_BUILD_EXAMPLES "Build examples" OFF)
@@ -116,7 +118,7 @@ if (NOT SKBUILD)
     install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             FILES_MATCHING PATTERN "*.h")
     # Generate and install a package config file so installed PcdIO is discoverable via
-    # find_package(pcdio CONFIG).  The version tracks python/pcdio/__init__.py.
+    # find_package(pcdio CONFIG).  The version comes from the root VERSION file.
     configure_package_config_file(
             "${PROJECT_SOURCE_DIR}/cmake/pcdioConfig.cmake.in"
             "${PROJECT_BINARY_DIR}/pcdioConfig.cmake"
