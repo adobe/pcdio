@@ -5,7 +5,7 @@ writing [PCD (Point Cloud Data)][pcd format] v0.7 files in all three data
 encodings — `ascii`, `binary` and `binary_compressed` (LZF) — and is
 compatible with files produced by the [Point Cloud Library (PCL)][PCL].
 
-![build and test](https://github.com/Research-Adobe/pcdio/workflows/build%20and%20test/badge.svg)
+[![build and test](https://github.com/adobe/pcdio/actions/workflows/build.yml/badge.svg)](https://github.com/adobe/pcdio/actions/workflows/build.yml)
 
 ## Build
 
