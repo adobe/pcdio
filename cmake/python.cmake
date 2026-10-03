@@ -9,10 +9,6 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 #
-if (TARGET Python::Module)
-    return()
-endif()
-
 if (SKBUILD)
     message(STATUS "Use scikit-build python environment")
     message(STATUS "Python_VERSION ${PYTHON_VERSION_STRING}")

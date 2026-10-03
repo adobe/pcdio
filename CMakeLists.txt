@@ -105,7 +105,8 @@ if (PCDIO_BUILD_TESTS)
 endif()
 
 
-if (NOT PCDIO_PYTHON)
+# Wheels omit C++ development artifacts; ordinary builds can install both APIs.
+if (NOT SKBUILD)
     include(CMakePackageConfigHelpers)
     install(TARGETS pcdio
             EXPORT pcdio_target

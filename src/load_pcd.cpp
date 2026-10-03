@@ -415,6 +415,9 @@ PcdSpec load_pcd(std::istream& in)
             corrupt("PCD binary_compressed uncompressed size " + std::to_string(uncompressed_size) +
                     " does not match expected " + std::to_string(expected) + ".");
         }
+        if (uncompressed_size == 0 && compressed_size != 0) {
+            corrupt("PCD binary_compressed empty payload has a nonempty compressed blob.");
+        }
         // The writer compresses each field as an independent LZF stream, each with up to
         // (field_bytes / 16 + 64) bytes of overhead, so the plausibility bound scales with the
         // field count instead of assuming a single stream.

@@ -20,6 +20,12 @@ make
 pip install git+https://github.com/Research-Adobe/pcdio.git
 ```
 
+Ordinary CMake builds install the C++ library, headers, and package config with
+`cmake --install build`, including when `-DPCDIO_PYTHON=ON` also builds the
+Python extension. Consumers can use `find_package(pcdio CONFIG REQUIRED)` and
+link `pcdio::pcdio`; set `CMAKE_PREFIX_PATH` to the installation prefix when
+needed. Scikit-build wheels omit the C++ development artifacts.
+
 ## Example
 
 A small CLI that loads a PCD file, prints a summary, and writes a copy is
@@ -101,6 +107,23 @@ The combination of `type` and `size` determines the C++ value type:
 | 'U'  | 2    | `uint16_t` |
 | 'U'  | 4    | `uint32_t` |
 | 'U'  | 8    | `uint64_t` |
+
+Use `field.get_value<T>(index)` and `field.set_value<T>(index, value)` for
+C++17-safe typed reads and writes. Both copy one scalar with `memcpy`, without
+allocating or exposing a typed pointer into byte storage. The flat value index
+for point `i`, channel `c` is `i * field.count + c`.
+
+```c++
+field.data.resize(3 * sizeof(float)); // Allocate storage before writing values.
+field.set_value<float>(0, 1.5f);
+const float intensity = field.get_value<float>(0);
+```
+
+A type/size mismatch throws `std::invalid_argument`; an index without a
+complete value in `field.data` throws `std::out_of_range`. Writes do not resize
+the buffer. These accessors replace the former `get_data<T>()` pointer API:
+read `get_data<T>()[index]` as `get_value<T>(index)`, and replace assignments
+through that pointer with `set_value<T>(index, value)`.
 
 PCL's packed `rgb` (float) / `rgba` (uint32) color fields are preserved
 verbatim like any other field; no channel conversion is applied.

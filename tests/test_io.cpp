@@ -13,6 +13,7 @@
 #include <pcdio/pcdio.h>
 
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
@@ -178,8 +179,8 @@ TEST_CASE("2D ascii fixture", "[io]")
     REQUIRE(spec.points == 3);
     REQUIRE(spec.fields.size() == 2);
     REQUIRE(spec.find_field("z") == nullptr);
-    REQUIRE(spec.find_field("x")->get_data<float>()[1] == Catch::Approx(1.0f));
-    REQUIRE(spec.find_field("y")->get_data<float>()[2] == Catch::Approx(-2.0f));
+    REQUIRE(spec.find_field("x")->get_value<float>(1) == Catch::Approx(1.0f));
+    REQUIRE(spec.find_field("y")->get_value<float>(2) == Catch::Approx(-2.0f));
 }
 
 TEST_CASE("roundtrip", "[io]")
@@ -334,9 +335,9 @@ TEST_CASE("ascii fixture", "[io]")
     REQUIRE(fx != nullptr);
     REQUIRE(fz != nullptr);
     REQUIRE(intensity != nullptr);
-    REQUIRE(fx->get_data<float>()[1] == Catch::Approx(1.0f));
-    REQUIRE(fz->get_data<float>()[2] == Catch::Approx(-3.0f));
-    REQUIRE(intensity->get_data<float>()[2] == Catch::Approx(3.0f));
+    REQUIRE(fx->get_value<float>(1) == Catch::Approx(1.0f));
+    REQUIRE(fz->get_value<float>(2) == Catch::Approx(-3.0f));
+    REQUIRE(intensity->get_value<float>(2) == Catch::Approx(3.0f));
     REQUIRE(spec.find_field("missing") == nullptr);
 }
 
@@ -369,10 +370,10 @@ TEST_CASE("uncompressed binary fixture", "[io]")
     const PcdField* fz = spec.find_field("z");
     REQUIRE(fx != nullptr);
     REQUIRE(fz != nullptr);
-    REQUIRE(fx->get_data<float>()[0] == Catch::Approx(0.f));
-    REQUIRE(fx->get_data<float>()[1] == Catch::Approx(10.f));
-    REQUIRE(fz->get_data<float>()[0] == Catch::Approx(2.f));
-    REQUIRE(fz->get_data<float>()[1] == Catch::Approx(12.f));
+    REQUIRE(fx->get_value<float>(0) == Catch::Approx(0.f));
+    REQUIRE(fx->get_value<float>(1) == Catch::Approx(10.f));
+    REQUIRE(fz->get_value<float>(0) == Catch::Approx(2.f));
+    REQUIRE(fz->get_value<float>(1) == Catch::Approx(12.f));
 }
 
 TEST_CASE("binary_compressed liblzf interop", "[io]")
@@ -500,10 +501,10 @@ TEST_CASE("binary_compressed liblzf interop", "[io]")
     REQUIRE(fz != nullptr);
     REQUIRE(intensity != nullptr);
     for (size_t i = 0; i < 16; ++i) {
-        REQUIRE(fx->get_data<float>()[i] == Catch::Approx(static_cast<float>(i)));
-        REQUIRE(fy->get_data<float>()[i] == Catch::Approx(0.0f));
-        REQUIRE(fz->get_data<float>()[i] == Catch::Approx(2.0f));
-        REQUIRE(intensity->get_data<float>()[i] == Catch::Approx(100.0f));
+        REQUIRE(fx->get_value<float>(i) == Catch::Approx(static_cast<float>(i)));
+        REQUIRE(fy->get_value<float>(i) == Catch::Approx(0.0f));
+        REQUIRE(fz->get_value<float>(i) == Catch::Approx(2.0f));
+        REQUIRE(intensity->get_value<float>(i) == Catch::Approx(100.0f));
     }
 }
 
@@ -527,8 +528,8 @@ TEST_CASE("uint64 ascii roundtrip", "[io]")
 
     const PcdField* id = spec2.find_field("id");
     REQUIRE(id != nullptr);
-    REQUIRE(id->get_data<uint64_t>()[0] == big);
-    REQUIRE(id->get_data<uint64_t>()[1] == big - 1u);
+    REQUIRE(id->get_value<uint64_t>(0) == big);
+    REQUIRE(id->get_value<uint64_t>(1) == big - 1u);
 }
 
 TEST_CASE("malformed binary_compressed data is rejected", "[io]")
@@ -563,6 +564,25 @@ TEST_CASE("malformed binary_compressed data is rejected", "[io]")
         const uint32_t wrong = 4;
         std::memcpy(mutated.data() + sizes_offset + 4, &wrong, sizeof(wrong));
         std::stringstream ss(mutated);
+        REQUIRE_THROWS_AS(pcdio::load_pcd(ss), pcdio::CorruptData);
+    }
+    SECTION("nonempty compressed blob for an empty cloud")
+    {
+        std::string payload = "VERSION 0.7\n"
+                              "FIELDS x\n"
+                              "SIZE 4\n"
+                              "TYPE F\n"
+                              "WIDTH 0\n"
+                              "HEIGHT 1\n"
+                              "POINTS 0\n"
+                              "DATA binary_compressed\n";
+        const uint32_t compressed_size = 1;
+        const uint32_t uncompressed_size = 0;
+        payload.append(reinterpret_cast<const char*>(&compressed_size), sizeof(compressed_size));
+        payload.append(
+            reinterpret_cast<const char*>(&uncompressed_size), sizeof(uncompressed_size));
+        payload.push_back('\xff');
+        std::stringstream ss(payload);
         REQUIRE_THROWS_AS(pcdio::load_pcd(ss), pcdio::CorruptData);
     }
 }
@@ -850,27 +870,86 @@ TEST_CASE("ascii special float values", "[io]")
                                 "nan\ninf\n-inf\nNAN\nINF\n-INF\n";
     std::stringstream ss(payload);
     PcdSpec spec = pcdio::load_pcd(ss);
-    const float* xs = spec.find_field("x")->get_data<float>();
-    REQUIRE(std::isnan(xs[0]));
-    REQUIRE(std::isinf(xs[1]));
-    REQUIRE(xs[1] > 0);
-    REQUIRE(std::isinf(xs[2]));
-    REQUIRE(xs[2] < 0);
-    REQUIRE(std::isnan(xs[3]));
-    REQUIRE(std::isinf(xs[4]));
-    REQUIRE(xs[4] > 0);
-    REQUIRE(std::isinf(xs[5]));
-    REQUIRE(xs[5] < 0);
+    const PcdField* field = spec.find_field("x");
+    REQUIRE(std::isnan(field->get_value<float>(0)));
+    REQUIRE(std::isinf(field->get_value<float>(1)));
+    REQUIRE(field->get_value<float>(1) > 0);
+    REQUIRE(std::isinf(field->get_value<float>(2)));
+    REQUIRE(field->get_value<float>(2) < 0);
+    REQUIRE(std::isnan(field->get_value<float>(3)));
+    REQUIRE(std::isinf(field->get_value<float>(4)));
+    REQUIRE(field->get_value<float>(4) > 0);
+    REQUIRE(std::isinf(field->get_value<float>(5)));
+    REQUIRE(field->get_value<float>(5) < 0);
 }
 
-TEST_CASE("get_data checks the field type", "[io]")
+TEMPLATE_TEST_CASE("typed field values preserve numeric bytes",
+    "[io]",
+    float,
+    double,
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t)
 {
-    PcdField field; // Defaults to type 'F', size 4.
-    field.name = "x";
-    field.data.resize(sizeof(float), 0);
-    REQUIRE_NOTHROW(field.get_data<float>());
-    REQUIRE_THROWS_AS(field.get_data<double>(), std::invalid_argument);
-    REQUIRE_THROWS_AS(field.get_data<int32_t>(), std::invalid_argument);
+    const TestType low = std::numeric_limits<TestType>::lowest();
+    const TestType high = std::numeric_limits<TestType>::max();
+    PcdField field = make_field("normal", 2, std::vector<TestType>{low, high, 1, 2});
+    const PcdField& view = field;
+    REQUIRE(view.get_value<TestType>(0) == low);
+    REQUIRE(view.get_value<TestType>(1) == high);
+    REQUIRE(view.get_value<TestType>(2) == TestType{1});
+    REQUIRE(view.get_value<TestType>(3) == TestType{2});
+
+    field.set_value<TestType>(2, TestType{42});
+    const PcdField expected = make_field("normal", 2, std::vector<TestType>{low, high, 42, 2});
+    REQUIRE(field.data == expected.data);
+}
+
+TEST_CASE("typed field access rejects invalid types and indices", "[io]")
+{
+    PcdField field = make_field("x", 1, std::vector<float>{1.0f, 2.0f});
+    const auto original = field.data;
+    SECTION("mismatched size")
+    {
+        REQUIRE_THROWS_AS(field.get_value<double>(0), std::invalid_argument);
+        REQUIRE_THROWS_AS(field.set_value<double>(0, 3.0), std::invalid_argument);
+        REQUIRE(field.data == original);
+    }
+    SECTION("mismatched type")
+    {
+        REQUIRE_THROWS_AS(field.get_value<int32_t>(0), std::invalid_argument);
+        REQUIRE_THROWS_AS(field.set_value<int32_t>(0, 3), std::invalid_argument);
+        REQUIRE(field.data == original);
+    }
+    SECTION("invalid indices")
+    {
+        size_t index = 0;
+        SECTION("empty buffer")
+        {
+            field.data.clear();
+        }
+        SECTION("partial value")
+        {
+            field.data.resize(sizeof(float) - 1);
+        }
+        SECTION("one past the last value")
+        {
+            index = 2;
+        }
+        SECTION("index multiplication would overflow")
+        {
+            index = std::numeric_limits<size_t>::max();
+        }
+        const auto before = field.data;
+        REQUIRE_THROWS_AS(field.get_value<float>(index), std::out_of_range);
+        REQUIRE_THROWS_AS(field.set_value<float>(index, 3.0f), std::out_of_range);
+        REQUIRE(field.data == before);
+    }
 }
 
 TEST_CASE("validate_spec", "[io]")

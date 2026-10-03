@@ -14,6 +14,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -75,37 +76,45 @@ struct PcdField
     }
 
     ///
-    /// Typed view of the raw field data.  `T` must match the C++ type implied by `type`/`size`;
-    /// a mismatch throws `std::invalid_argument` instead of silently misinterpreting the byte
-    /// buffer.  The vector storage is obtained from `operator new`, which is sufficiently
-    /// aligned for any scalar `T` since C++17.  Reading `T` objects out of byte storage relies
-    /// on the type-punning behavior every mainstream compiler provides in C++17 (the standard
-    /// only blesses it for implicit-lifetime types in C++20); this is the same approach PCL and
-    /// other PCD readers use, and it is covered by the UBSan test runs.
+    /// Read one value by copying its bytes into a live `T` object (valid in C++17).
+    /// `index` is a flat value index: point `i`, channel `c` is at `i * count + c`.
+    /// `T` must match the field's declared type/size or `std::invalid_argument` is thrown.
+    /// An index without a complete value in `data` throws `std::out_of_range`.
     ///
     template <typename T>
-    const T* get_data() const
+    T get_value(std::size_t index) const
     {
-        check_type<T>();
-        return reinterpret_cast<const T*>(data.data());
+        const std::size_t offset = checked_offset<T>(index);
+        std::remove_cv_t<T> value;
+        std::memcpy(&value, data.data() + offset, sizeof(T));
+        return value;
     }
 
-    /// @overload
+    ///
+    /// Write one value without resizing `data`.  Index and type requirements match
+    /// `get_value<T>()`; the copy does not create typed objects in the byte buffer.
+    ///
     template <typename T>
-    T* get_data()
+    void set_value(std::size_t index, T value)
     {
-        check_type<T>();
-        return reinterpret_cast<T*>(data.data());
+        const std::size_t offset = checked_offset<T>(index);
+        std::memcpy(data.data() + offset, &value, sizeof(T));
     }
 
 private:
     template <typename T>
-    void check_type() const
+    std::size_t checked_offset(std::size_t index) const
     {
+        static_assert(std::is_arithmetic_v<T> && !std::is_same_v<std::remove_cv_t<T>, bool>,
+            "T must be a PCD numeric type");
         if (type != pcd_type_char<T>() || size != static_cast<int>(sizeof(T))) {
-            throw std::invalid_argument(
-                "get_data<T>: T does not match the field's declared type/size");
+            throw std::invalid_argument("T does not match the field's declared type/size");
         }
+        // Check before multiplying, including when the buffer contains a partial value.
+        if (index >= data.size() / sizeof(T)) {
+            throw std::out_of_range("PCD field value index is out of range");
+        }
+        return index * sizeof(T);
     }
 };
 

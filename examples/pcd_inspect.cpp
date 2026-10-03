@@ -47,20 +47,15 @@ int main(int argc, char** argv)
         fy->type == 'F' && fy->count == 1 && fz->type == 'F' && fz->count == 1) {
         const size_t num_preview = spec.points < 5 ? spec.points : 5;
         if (fx->size == 8 && fy->size == 8 && fz->size == 8) {
-            const double* xs = fx->get_data<double>();
-            const double* ys = fy->get_data<double>();
-            const double* zs = fz->get_data<double>();
             for (size_t i = 0; i < num_preview; i++) {
-                std::cout << "  point " << i << ": " << xs[i] << " " << ys[i] << " " << zs[i]
+                std::cout << "  point " << i << ": " << fx->get_value<double>(i) << " "
+                          << fy->get_value<double>(i) << " " << fz->get_value<double>(i)
                           << std::endl;
             }
         } else if (fx->size == 4 && fy->size == 4 && fz->size == 4) {
-            const float* xs = fx->get_data<float>();
-            const float* ys = fy->get_data<float>();
-            const float* zs = fz->get_data<float>();
             for (size_t i = 0; i < num_preview; i++) {
-                std::cout << "  point " << i << ": " << xs[i] << " " << ys[i] << " " << zs[i]
-                          << std::endl;
+                std::cout << "  point " << i << ": " << fx->get_value<float>(i) << " "
+                          << fy->get_value<float>(i) << " " << fz->get_value<float>(i) << std::endl;
             }
         }
     }
