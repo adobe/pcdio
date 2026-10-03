@@ -421,8 +421,11 @@ PcdSpec load_pcd(std::istream& in)
         // The writer compresses each field as an independent LZF stream, each with up to
         // (field_bytes / 16 + 64) bytes of overhead, so the plausibility bound scales with the
         // field count instead of assuming a single stream.
+        // Check the initial sum too: uint32_t payload sizes can overflow 32-bit size_t.
         const size_t compressed_bound =
-            checked_add(static_cast<size_t>(uncompressed_size) + uncompressed_size / 16,
+            checked_add(checked_add(static_cast<size_t>(uncompressed_size),
+                            uncompressed_size / 16,
+                            "PCD header size overflow."),
                 checked_mul(size_t{64}, spec.fields.size(), "PCD header size overflow."),
                 "PCD header size overflow.");
         if (compressed_size > compressed_bound) {
